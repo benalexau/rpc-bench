@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  #%L
+  RPC Benchmark: Aeron with SBE
+  %%
+  Copyright (C) 2016 Acegi Technology Pty Limited
+  %%
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+  
+       http://www.apache.org/licenses/LICENSE-2.0
+  
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+  #L%
+  -->
+<sbe:messageSchema xmlns:sbe="http://fixprotocol.io/2016/sbe" package="au.com.acegi.rpcbench.aeron.codecs" id="1" version="0" semanticVersion="1.0" description="Benchmark SBE codec" byteOrder="littleEndian">
+  <!-- NB: Always check/update const.h values when modifying this file -->
+  <types>
+    <composite name="messageHeader">
+      <type primitiveType="uint16" name="blockLength"/>
+      <type primitiveType="uint16" name="templateId"/>
+      <type primitiveType="uint16" name="schemaId"/>
+      <type primitiveType="uint16" name="version"/>
+    </composite>
+    <composite name="groupSizeEncoding">
+      <type primitiveType="uint16" name="blockLength"/>
+      <type primitiveType="uint8" name="numInGroup"/>
+    </composite>
+    <composite name="varDataEncoding">
+      <type primitiveType="uint8" name="length"/>
+      <type primitiveType="uint8" length="0" characterEncoding="UTF-8" name="varData"/>
+    </composite>
+  </types>
+  <sbe:message id="1" name="Ping">
+    <field sinceVersion="0" id="1" type="int64" name="timestamp"/>
+  </sbe:message>
+  <sbe:message id="2" name="Pong">
+    <field sinceVersion="0" id="1" type="int64" name="timestamp"/>
+  </sbe:message>
+  <sbe:message id="3" name="Size">
+    <field sinceVersion="0" id="1" type="int32" name="messages"/>
+    <field sinceVersion="0" id="2" type="int64" name="tod"/>
+  </sbe:message>
+  <sbe:message id="4" name="Price">
+    <field sinceVersion="0" id="1" type="int64" name="tod"/>
+    <field sinceVersion="0" id="2" type="int32" name="iid" description="Instrument ID"/>
+    <field sinceVersion="0" id="3" type="int32" name="bid" description="Bid"/>
+    <field sinceVersion="0" id="4" type="int32" name="ask" description="Ask"/>
+    <field sinceVersion="0" id="5" type="int32" name="trd" description="Trade"/>
+    <field sinceVersion="0" id="6" type="int32" name="vol" description="Incremental volume"/>
+  </sbe:message>
+</sbe:messageSchema>

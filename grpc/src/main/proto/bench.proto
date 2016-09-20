@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "au.com.acegi.rpcbench.grpc.codecs";
+option java_outer_classname = "HelloWorldProto";
+option objc_class_prefix = "HLW";
+
+package bench;
+
+service Bench {
+  rpc PingPong(Ping) returns (Pong) {}
+  rpc PriceStream(Size) returns (stream Price) {}
+}
+
+message Ping {
+  int64 timestamp = 1;
+}
+
+message Pong {
+  int64 timestamp = 1; // (copied from incoming Ping.timestamp)
+}
+
+message Size {
+  int32 messages = 1;
+  int64 tod = 2;
+}
+
+message Price {
+  int64 tod = 1;  // time of day (copied from incoming Size.tod)
+  int32 iid = 2;  // instrument ID
+  int32 bid = 3;
+  int32 ask = 4;
+  int32 trd = 5;  // trade
+  int32 vol = 6;  // inc vol
+}
