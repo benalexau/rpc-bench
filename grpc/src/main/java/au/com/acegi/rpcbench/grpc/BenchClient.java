@@ -34,6 +34,7 @@ import java.io.PrintStream;
 import static java.lang.System.nanoTime;
 import java.util.concurrent.CountDownLatch;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import java.util.concurrent.locks.LockSupport;
 import org.HdrHistogram.Histogram;
 
 @SuppressWarnings("checkstyle:JavadocType")
@@ -41,7 +42,7 @@ public final class BenchClient {
 
   private static final Histogram HISTOGRAM;
   private static final int TIMEOUT_PING = 600;
-  private static final int TIMEOUT_PRICE = 14400; // 4 hours
+  private static final int TIMEOUT_PRICE = 14_400; // 4 hours
   private final ManagedChannel channel;
   private final BenchGrpc.BenchStub stub;
 
@@ -74,11 +75,13 @@ public final class BenchClient {
     try {
       pingPong(100_000); // warm up
       HISTOGRAM.reset();
+      LockSupport.parkNanos(SECONDS.toNanos(5));
       pingPong(1_000_000);
       writeResults("grpc-ping-pong-1M.txt");
 
       priceStream(100_000); // warm up
       HISTOGRAM.reset();
+      LockSupport.parkNanos(SECONDS.toNanos(5));
       priceStream(100_000_000);
       writeResults("grpc-price-stream-100M.txt");
     } finally {
@@ -114,6 +117,7 @@ public final class BenchClient {
       if (!latch.await(TIMEOUT_PING, SECONDS)) {
         throw new IllegalStateException("Timed out");
       }
+      LockSupport.parkNanos(100);
     }
 
   }

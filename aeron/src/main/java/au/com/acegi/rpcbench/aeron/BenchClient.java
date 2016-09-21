@@ -42,6 +42,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.CountDownLatch;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.LockSupport;
 import org.HdrHistogram.Histogram;
 import static org.agrona.BitUtil.CACHE_LINE_LENGTH;
 import static org.agrona.BufferUtil.allocateDirectAligned;
@@ -139,12 +140,14 @@ public final class BenchClient {
         throw new IllegalStateException("Couldn't connect to server");
       }
       pingPong(100_000); // warm up
+      LockSupport.parkNanos(SECONDS.toNanos(5));
       HISTOGRAM.reset();
       pingPong(1_000_000);
       writeResults("aeron-ping-pong-1M.txt");
 
       priceStream(100_000); // warm up
       HISTOGRAM.reset();
+      LockSupport.parkNanos(SECONDS.toNanos(5));
       priceStream(100_000_000);
       writeResults("aeron-price-stream-100M.txt");
     } finally {
@@ -203,6 +206,7 @@ public final class BenchClient {
       while (subscription.poll(fragmentHandler, FRAGMENT_LIMIT) <= 0) {
         IDLE.idle();
       }
+      LockSupport.parkNanos(100);
     }
   }
 
