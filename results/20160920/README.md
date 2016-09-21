@@ -182,7 +182,32 @@ per second against gRPC delivering close to 89,000 per second. Aeron's usable
 throughput was therefore around 445 MB per second (for the 28 byte SBE message),
 or 572 MB including the user-customisable 8 byte SBE message header.
 
+### Variations
+
+To validate whether adding thread parks at selected points would improve the
+results, a five second park was added after each warm-up, and a 100 nanosecond
+park after each ping-pong loop iteration. These are reflected in commit 4401cd9.
+
+In the follow graphs, the "published" result is the ping-pong latency shown
+above. The "nowait" is simply a clean run of the same code as applied for
+"published" and therefore illustrates inter-run jitter. The "warmupwait" is the
+introduction of the 5 second park after warming up. The "wait" is the addition
+of the 100 nanosecond park as well as the 5 second warmup park.
+
+![img](ping-pong-aeron-run.png)
+
+Aeron's performance did not materially change between the runs.
+
+![img](ping-pong-grpc-run.png)
+
+gRPC performed very similarly across the runs, although the introduction of
+the ping-pong loop park improved results from the 99.999th percentile.
+
 ### Conclusion
+
+Aeron delivered considerably lower and more stable latency, plus completed the
+high volume streaming workload around 185 times faster. These results were
+stable across multiple re-runs and irrespective of thread park points.
 
 As noted in the introduction, Aeron and gRPC aim at different workloads and use
 different underlying transport protocols. They also offer different usability
