@@ -10,9 +10,9 @@ stacks as applicable to Java Virtual Machine (JVM) only workloads.
 The Google stack consists of
 [Protocol Buffers](https://developers.google.com/protocol-buffers/) and
 [gRPC](http://www.grpc.io/). The former's extensive range of programming
-language integrations has led to it becoming something of a de facto standard
-for high performance data interchange. gRPC continues this tradition by adding
-request-response, client-streaming, server-streaming and bi-directional
+language integrations has led to it become something of a de facto standard for
+high performance data interchange. gRPC continues this tradition by adding
+polygot request-response, client-streaming, server-streaming and bi-directional
 streaming support. While gRPC is serialization independent, it is most commonly
 used with Protocol Buffers.
 
@@ -35,8 +35,8 @@ all transfer operations.
 Clearly gRPC and Aeron aim at different use cases and have made appropriate
 engineering trade-offs to achieve their specific goals. Our own requirements
 relate to market data transmission between JVM servers in the same data
-center. As such Aeron would appear to more natually align with our needs, but we
-wanted to explore whether gRPC might be suitable given its rich capabilities
+center. As such Aeron would appear to more naturally align with our needs, but
+we wanted to explore whether gRPC might be suitable given its rich capabilities
 around last mile computing workloads and programming language interoperability.
 
 ### Benchmark Design
@@ -58,7 +58,7 @@ receive 100 million price messages. Each price message contains one `long` and
 five `int` fields (ie 28 bytes), plus any framing and headers introduced by the
 implementation under test. The `long` contains the `System.nanoTime()` of the
 client request, allowing the client to compute the time required to receive each
-of the 100 million events.
+of the 100 million price messages.
 
 While 100 million price messages may seem excessive, it is only a small fraction
 of the billions of price messages transmitted on a typical trading day.
@@ -74,6 +74,8 @@ this benchmark, SBE's default eight byte message header was used.
 #### gRPC Configuration
 
 A default, Netty-based, plain-text gRPC client-server configuration was used.
+Following a [suggestion](https://twitter.com/buchgr/status/778323926959128576),
+`NettyServerBuilder.directExecutor()` was also benchmarked.
 
 The price stream benchmark originally failed with
 `io.netty.util.internal.OutOfDirectMemoryError: failed to allocate 16777216
@@ -104,7 +106,7 @@ versions were gRPC-Java 1.0.1, Aeron 1.0.1 and SBE 1.5.0.
 
 All tests were executed against `localhost` without any rate limiting. The
 kernel had been configured with `net.core.rmem_max=2097152` and
-`net.core.wmem_max=2097152`. The machine run no other workloads during the test.
+`net.core.wmem_max=2097152`. The machine ran no other workloads during the test.
 
 ### Benchmark Reproduction
 
@@ -131,22 +133,22 @@ All values are in nanoseconds.
 
 ![img](ping-pong.png)
 
-| Percentile | [gRPC](grpc-ping-pong-1M.txt) | [Aeron](aeron-ping-pong-1M.txt) |
-| ---------- | ----: | ---------: |
-| 0.00       | 69    | 3   |
-| 0.10       | 93    | 4   |
-| 0.20       | 99    | 5   |
-| 0.30       | 103   | 5   |
-| 0.40       | 107   | 6   |
-| 0.50       | 111   | 6   |
-| 0.60       | 116   | 6   |
-| 0.70       | 121   | 6   |
-| 0.80       | 127   | 6   |
-| 0.90       | 136   | 7   |
-| 0.95       | 145   | 8   |
-| 0.99       | 163   | 10  |
-| 0.999      | 577   | 17  |
-| 1.00       | 23,707 | 879 |
+| Percentile | [gRPC Default](grpc-ping-pong-1M.txt) | [gRPC Direct Executor](grpc-direct-ping-pong-1M.txt) | [Aeron](aeron-ping-pong-1M.txt) |
+| ---------- | ----: | -----: | --: |
+| 0.00       | 69    | 59     | 3   |
+| 0.10       | 93    | 99     | 4   |
+| 0.20       | 99    | 105    | 5   |
+| 0.30       | 103   | 111    | 5   |
+| 0.40       | 107   | 115    | 6   |
+| 0.50       | 111   | 120    | 6   |
+| 0.60       | 116   | 124    | 6   |
+| 0.70       | 121   | 129    | 6   |
+| 0.80       | 127   | 136    | 6   |
+| 0.90       | 136   | 146    | 7   |
+| 0.95       | 145   | 156    | 8   |
+| 0.99       | 163   | 183    | 10  |
+| 0.999      | 577   | 286    | 17  |
+| 1.00       | 23,707| 18,235 | 879 |
 
 Aeron's latency is far lower, and much more stable.
 
@@ -154,29 +156,31 @@ Aeron's latency is far lower, and much more stable.
 
 ![img](price-stream.png)
 
-| Percentile | [gRPC](grpc-price-stream-100M.txt) | [Aeron](aeron-price-stream-100M.txt) |
-| ---------- | ----: | ---------: |
-| 0.00       | 1,107         | 25   |
-| 0.10       | 112,810,000   | 692,060   |
-| 0.20       | 221,459,251   | 1,299,185   |
-| 0.30       | 332,859,965   | 1,880,096   |
-| 0.40       | 445,871,292   | 2,480,930   |
-| 0.50       | 554,587,652   | 3,061,841   |
-| 0.60       | 668,404,285   | 3,674,210   |
-| 0.70       | 782,757,789   | 4,265,607   |
-| 0.80       | 897,111,293   | 4,861,198   |
-| 0.90       | 1,010,927,927 | 5,460,983   |
-| 0.95       | 1,066,762,502 | 5,758,779   |
-| 0.99       | 1,117,765,238 | 5,989,466   |
-| 0.999      | 1,120,986,464 | 6,039,797   |
-| 1.00       | 1,122,060,206 | 6,043,992   |
+| Percentile | [gRPC Default](grpc-price-stream-100M.txt) | [Aeron](aeron-price-stream-100M.txt) |
+| ---------- | ------------: | ---------: |
+| 0.00       | 1,107         | 25         |
+| 0.10       | 112,810,000   | 692,060    |
+| 0.20       | 221,459,251   | 1,299,185  |
+| 0.30       | 332,859,965   | 1,880,096  |
+| 0.40       | 445,871,292   | 2,480,930  |
+| 0.50       | 554,587,652   | 3,061,841  |
+| 0.60       | 668,404,285   | 3,674,210  |
+| 0.70       | 782,757,789   | 4,265,607  |
+| 0.80       | 897,111,293   | 4,861,198  |
+| 0.90       | 1,010,927,927 | 5,460,983  |
+| 0.95       | 1,066,762,502 | 5,758,779  |
+| 0.99       | 1,117,765,238 | 5,989,466  |
+| 0.999      | 1,120,986,464 | 6,039,797  |
+| 1.00       | 1,122,060,206 | 6,043,992  |
 
-Aeron is around 185 times faster than gRPC for this test. Aeron transferred
-the full 100 million price messages in 6 seconds, as opposed to gRPC requiring
-19 minutes. In terms of approximate messages per second, Aeron delivered 17
-million per second against gRPC delivering closer to 89,000 per second. Aeron's
-throughput is thus around 445 MB per second of the 28 byte application-level SBE
-messages, or 572 MB including the 8 byte SBE message header.
+The gRPC direct executor was cancelled after 2.5 hours without completing.
+
+Aeron completed the transfer 185 times faster than gRPC. Aeron transferred the
+100 million price messages in 6 seconds, as opposed to gRPC requiring 19
+minutes. In terms of approximate messages per second, Aeron delivered 17 million
+per second against gRPC delivering close to 89,000 per second. Aeron's usable
+throughput was therefore around 445 MB per second (for the 28 byte SBE message),
+or 572 MB including the user-customisable 8 byte SBE message header.
 
 ### Conclusion
 
@@ -191,11 +195,11 @@ For example, Aeron recommends (though does not require) a dedicated media driver
 process and busy spin strategies, whereas gRPC always embeds the transport in
 the client and server processes.
 
-It is highly probable that the gRPC results could be improved by a gRPC expert.
-Pull requests are welcome.
+Both gRPC and Aeron provide many tuning options that could improve their
+respective results. Pull requests are welcome.
 
-If you are interested in low latency benchmarks on the JVM, you might like to
-browse at our
+If you are interested in other low latency benchmarks on the JVM, you might like
+to browse our
 [Embedded Key-Value Store Benchmark](https://github.com/lmdbjava/benchmarks)
 and
 [JVM Hashing Algorithm Benchmark](https://github.com/benalexau/hash-bench)

@@ -25,8 +25,8 @@ import au.com.acegi.rpcbench.grpc.codecs.Ping;
 import au.com.acegi.rpcbench.grpc.codecs.Pong;
 import au.com.acegi.rpcbench.grpc.codecs.Price;
 import au.com.acegi.rpcbench.grpc.codecs.Size;
-import io.grpc.ServerBuilder;
 import static io.grpc.ServerInterceptors.intercept;
+import io.grpc.netty.NettyServerBuilder;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 
@@ -52,7 +52,8 @@ public class BenchServer {
 
   @SuppressWarnings("PMD.DoNotUseThreads")
   private void start() throws IOException {
-    server = ServerBuilder.forPort(PORT)
+    server = NettyServerBuilder.forPort(PORT)
+        .directExecutor()
         .addService(intercept(new BenchImpl(), new ConnectionInterceptor()))
         .build()
         .start();
