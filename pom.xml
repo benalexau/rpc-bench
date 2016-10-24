@@ -82,6 +82,9 @@
         <artifactId>maven-enforcer-plugin</artifactId>
       </plugin>
       <plugin>
+        <artifactId>maven-dependency-plugin</artifactId>
+      </plugin>
+      <plugin>
         <artifactId>maven-checkstyle-plugin</artifactId>
       </plugin>
       <plugin>
