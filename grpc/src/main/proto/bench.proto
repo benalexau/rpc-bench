@@ -8,7 +8,7 @@ option objc_class_prefix = "HLW";
 package bench;
 
 service Bench {
-  rpc PingPong(Ping) returns (Pong) {}
+  rpc PingPong(stream Ping) returns (stream Pong) {}
   rpc PriceStream(Size) returns (stream Price) {}
 }
 

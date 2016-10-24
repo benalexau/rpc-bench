@@ -53,7 +53,6 @@ public class BenchServer {
   @SuppressWarnings("PMD.DoNotUseThreads")
   private void start() throws IOException {
     server = NettyServerBuilder.forPort(PORT)
-        .directExecutor()
         .addService(intercept(new BenchImpl(), new ConnectionInterceptor()))
         .build()
         .start();
@@ -76,11 +75,26 @@ public class BenchServer {
   private class BenchImpl extends BenchGrpc.BenchImplBase {
 
     @Override
-    public void pingPong(final Ping request, final StreamObserver<Pong> response) {
-      final Pong.Builder bdr = Pong.newBuilder();
-      bdr.setTimestamp(request.getTimestamp());
-      response.onNext(bdr.build());
-      response.onCompleted();
+    public StreamObserver<Ping> pingPong(final StreamObserver<Pong> response) {
+
+      return new StreamObserver<Ping>() {
+        @Override
+        public void onCompleted() {
+          response.onCompleted();
+        }
+
+        @Override
+        public void onError(final Throwable t) {
+          throw new IllegalStateException(t);
+        }
+
+        @Override
+        public void onNext(final Ping request) {
+          final Pong.Builder bdr = Pong.newBuilder();
+          bdr.setTimestamp(request.getTimestamp());
+          response.onNext(bdr.build());
+        }
+      };
     }
 
     @Override

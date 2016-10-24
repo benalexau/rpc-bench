@@ -22,6 +22,7 @@ package au.com.acegi.rpcbench.aeron;
 
 import au.com.acegi.rpcbench.aeron.codecs.MessageHeaderDecoder;
 import au.com.acegi.rpcbench.aeron.codecs.MessageHeaderEncoder;
+import static au.com.acegi.rpcbench.aeron.codecs.MessageHeaderEncoder.ENCODED_LENGTH;
 import au.com.acegi.rpcbench.aeron.codecs.PingEncoder;
 import au.com.acegi.rpcbench.aeron.codecs.PongDecoder;
 import au.com.acegi.rpcbench.aeron.codecs.PriceDecoder;
@@ -38,11 +39,12 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import static java.lang.System.nanoTime;
+import static java.lang.System.setProperty;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CountDownLatch;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.LockSupport;
+import static java.util.concurrent.locks.LockSupport.parkNanos;
 import org.HdrHistogram.Histogram;
 import static org.agrona.BitUtil.CACHE_LINE_LENGTH;
 import static org.agrona.BufferUtil.allocateDirectAligned;
@@ -51,12 +53,12 @@ import org.agrona.DirectBuffer;
 import org.agrona.concurrent.BusySpinIdleStrategy;
 import org.agrona.concurrent.IdleStrategy;
 import org.agrona.concurrent.UnsafeBuffer;
+import static org.agrona.concurrent.UnsafeBuffer.DISABLE_BOUNDS_CHECKS_PROP_NAME;
 
 @SuppressWarnings("checkstyle:JavadocType")
 public final class BenchClient {
 
   private static final UnsafeBuffer BUFFER;
-  private static final int BUFF_SIZE;
   private static final boolean EMBEDDED_MEDIA_DRIVER = false;
   private static final int FRAGMENT_LIMIT = 256;
   private static final MessageHeaderDecoder HDR_D;
@@ -66,13 +68,17 @@ public final class BenchClient {
   private static final IdleStrategy IDLE = new BusySpinIdleStrategy();
   private static final CountDownLatch LATCH = new CountDownLatch(1);
   private static final AtomicLong PENDING = new AtomicLong();
+  private static final long PINGS_PER_SECOND = 10_000;
   private static final PingEncoder PING_E;
+  private static final int PING_LEN;
   private static final PongDecoder POND_D;
   private static final PriceDecoder PRICE_D;
+  private static final int PRICE_LEN;
   private static final String REP_CHAN = Configuration.REP_CHANNEL;
   private static final int REP_STREAM_ID = Configuration.REP_STREAM_ID;
   private static final String REQ_CHAN = Configuration.REQ_CHANNEL;
   private static final int REQ_STREAM_ID = Configuration.REQ_STREAM_ID;
+  private static final long SCHEDULE_INTERVAL_NS;
   private static final SizeEncoder SIZE_E;
   private final Aeron aeron;
   private final Aeron.Context ctx;
@@ -82,8 +88,11 @@ public final class BenchClient {
   private final Subscription subscription;
 
   static {
-    BUFF_SIZE = MessageHeaderEncoder.ENCODED_LENGTH + SizeEncoder.BLOCK_LENGTH;
-    final ByteBuffer bb = allocateDirectAligned(BUFF_SIZE, CACHE_LINE_LENGTH);
+    setProperty(DISABLE_BOUNDS_CHECKS_PROP_NAME, "true");
+    SCHEDULE_INTERVAL_NS = SECONDS.toNanos(1) / PINGS_PER_SECOND;
+    PING_LEN = ENCODED_LENGTH + PingEncoder.BLOCK_LENGTH;
+    PRICE_LEN = ENCODED_LENGTH + SizeEncoder.BLOCK_LENGTH;
+    final ByteBuffer bb = allocateDirectAligned(PRICE_LEN, CACHE_LINE_LENGTH);
     BUFFER = new UnsafeBuffer(bb);
     HISTOGRAM = new Histogram(SECONDS.toNanos(HISTOGRAM_MAX_VAL_SEC), 3);
     HDR_D = new MessageHeaderDecoder();
@@ -93,8 +102,8 @@ public final class BenchClient {
     PRICE_D = new PriceDecoder();
     SIZE_E = new SizeEncoder();
     HDR_E.wrap(BUFFER, 0);
-    PING_E.wrap(BUFFER, MessageHeaderEncoder.ENCODED_LENGTH);
-    SIZE_E.wrap(BUFFER, MessageHeaderEncoder.ENCODED_LENGTH);
+    PING_E.wrap(BUFFER, ENCODED_LENGTH);
+    SIZE_E.wrap(BUFFER, ENCODED_LENGTH);
     HDR_E.schemaId(PingEncoder.SCHEMA_ID);
     HDR_E.version(PingEncoder.SCHEMA_VERSION);
   }
@@ -140,14 +149,14 @@ public final class BenchClient {
         throw new IllegalStateException("Couldn't connect to server");
       }
       pingPong(100_000); // warm up
-      LockSupport.parkNanos(SECONDS.toNanos(5));
+      parkNanos(SECONDS.toNanos(5));
       HISTOGRAM.reset();
       pingPong(1_000_000);
       writeResults("aeron-ping-pong-1M.txt");
 
       priceStream(100_000); // warm up
       HISTOGRAM.reset();
-      LockSupport.parkNanos(SECONDS.toNanos(5));
+      parkNanos(SECONDS.toNanos(5));
       priceStream(100_000_000);
       writeResults("aeron-price-stream-100M.txt");
     } finally {
@@ -184,6 +193,7 @@ public final class BenchClient {
     POND_D.wrap(buffer, offset, actingBlockLength, actingVersion);
     final long rtt = nanoTime() - POND_D.timestamp();
     HISTOGRAM.recordValue(rtt);
+    PENDING.decrementAndGet();
   }
 
   private void onPrice(final DirectBuffer buffer, final int offset,
@@ -194,20 +204,27 @@ public final class BenchClient {
     PENDING.decrementAndGet();
   }
 
+  @SuppressWarnings("PMD.DoNotUseThreads")
   private void pingPong(final int messages) throws InterruptedException {
     HDR_E.blockLength(PingEncoder.BLOCK_LENGTH);
     HDR_E.templateId(PingEncoder.TEMPLATE_ID);
+    PENDING.set(messages);
+    final Thread pongThread = new Thread(new PongReceiver());
+    pongThread.start();
+    parkNanos(SECONDS.toNanos(1));
+    final long start = nanoTime();
+    long nextSendAt = start + SCHEDULE_INTERVAL_NS;
     for (int i = 0; i < messages; i++) {
-      do {
-        PING_E.timestamp(nanoTime());
-      } while (publication.offer(BUFFER, 0, BUFF_SIZE) < 0L);
-
-      IDLE.reset();
-      while (subscription.poll(fragmentHandler, FRAGMENT_LIMIT) <= 0) {
-        IDLE.idle();
+      while (nanoTime() < nextSendAt) {
+        // busy spin
       }
-      LockSupport.parkNanos(100);
+      PING_E.timestamp(nextSendAt);
+      nextSendAt += SCHEDULE_INTERVAL_NS;
+      do {
+        // busy spin
+      } while (publication.offer(BUFFER, 0, PING_LEN) < 0L);
     }
+    pongThread.join();
   }
 
   private void priceStream(final int messages) throws InterruptedException {
@@ -216,7 +233,7 @@ public final class BenchClient {
     HDR_E.templateId(SizeEncoder.TEMPLATE_ID);
     SIZE_E.messages(messages);
     SIZE_E.tod(nanoTime());
-    while (publication.offer(BUFFER, 0, BUFF_SIZE) < 0L) {
+    while (publication.offer(BUFFER, 0, PRICE_LEN) < 0L) {
       IDLE.idle();
     }
     IDLE.reset();
@@ -225,5 +242,17 @@ public final class BenchClient {
         IDLE.idle();
       }
     }
+  }
+
+  @SuppressWarnings("PMD.DoNotUseThreads")
+  private class PongReceiver implements Runnable {
+
+    @Override
+    public void run() {
+      while (PENDING.get() > 0) {
+        subscription.poll(fragmentHandler, FRAGMENT_LIMIT);
+      }
+    }
+
   }
 }

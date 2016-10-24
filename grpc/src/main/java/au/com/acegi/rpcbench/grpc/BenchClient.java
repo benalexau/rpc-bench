@@ -41,12 +41,15 @@ import org.HdrHistogram.Histogram;
 public final class BenchClient {
 
   private static final Histogram HISTOGRAM;
+  private static final long PINGS_PER_SECOND = 10_000;
+  private static final long SCHEDULE_INTERVAL_NS;
   private static final int TIMEOUT_PING = 600;
   private static final int TIMEOUT_PRICE = 14_400; // 4 hours
   private final ManagedChannel channel;
   private final BenchGrpc.BenchStub stub;
 
   static {
+    SCHEDULE_INTERVAL_NS = SECONDS.toNanos(1) / PINGS_PER_SECOND;
     HISTOGRAM = new Histogram(SECONDS.toNanos(TIMEOUT_PRICE), 3);
   }
 
@@ -91,35 +94,41 @@ public final class BenchClient {
 
   @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
   private void pingPong(final int messages) throws InterruptedException {
-    for (int i = 0; i < messages; i++) {
-      final CountDownLatch latch = new CountDownLatch(1);
-      final StreamObserver<Pong> response = new StreamObserver<Pong>() {
-        @Override
-        public void onCompleted() {
-          latch.countDown();
-        }
-
-        @Override
-        public void onError(final Throwable t) {
-          throw new IllegalStateException(t);
-        }
-
-        @Override
-        public void onNext(final Pong value) {
-          final long rtt = nanoTime() - value.getTimestamp();
-          HISTOGRAM.recordValue(rtt);
-          latch.countDown();
-        }
-      };
-
-      final Ping request = Ping.newBuilder().setTimestamp(nanoTime()).build();
-      stub.withDeadlineAfter(TIMEOUT_PING, SECONDS).pingPong(request, response);
-      if (!latch.await(TIMEOUT_PING, SECONDS)) {
-        throw new IllegalStateException("Timed out");
+    final CountDownLatch latch = new CountDownLatch(messages);
+    final StreamObserver<Pong> response = new StreamObserver<Pong>() {
+      @Override
+      public void onCompleted() {
+        // ignored
       }
-      LockSupport.parkNanos(100);
-    }
 
+      @Override
+      public void onError(final Throwable t) {
+        throw new IllegalStateException("Remaining=" + latch.getCount(), t);
+      }
+
+      @Override
+      public void onNext(final Pong value) {
+        final long rtt = nanoTime() - value.getTimestamp();
+        HISTOGRAM.recordValue(rtt);
+        latch.countDown();
+      }
+    };
+    final StreamObserver<Ping> ping
+        = stub.withDeadlineAfter(TIMEOUT_PING, SECONDS).pingPong(response);
+    final long start = nanoTime();
+    long nextSendAt = start + SCHEDULE_INTERVAL_NS;
+    for (int i = 0; i < messages; i++) {
+      while (nanoTime() < nextSendAt) {
+        // busy spin
+      }
+      final Ping request = Ping.newBuilder().setTimestamp(nextSendAt).build();
+      nextSendAt += SCHEDULE_INTERVAL_NS;
+      ping.onNext(request);
+    }
+    ping.onCompleted();
+    if (!latch.await(TIMEOUT_PING, SECONDS)) {
+      throw new IllegalStateException("Timed out");
+    }
   }
 
   private void priceStream(final int messages) throws InterruptedException {

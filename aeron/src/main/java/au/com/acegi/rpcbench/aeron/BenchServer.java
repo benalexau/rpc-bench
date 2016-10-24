@@ -22,6 +22,7 @@ package au.com.acegi.rpcbench.aeron;
 
 import au.com.acegi.rpcbench.aeron.codecs.MessageHeaderDecoder;
 import au.com.acegi.rpcbench.aeron.codecs.MessageHeaderEncoder;
+import static au.com.acegi.rpcbench.aeron.codecs.MessageHeaderEncoder.ENCODED_LENGTH;
 import au.com.acegi.rpcbench.aeron.codecs.PingDecoder;
 import au.com.acegi.rpcbench.aeron.codecs.PongEncoder;
 import au.com.acegi.rpcbench.aeron.codecs.PriceEncoder;
@@ -33,6 +34,7 @@ import io.aeron.Subscription;
 import io.aeron.driver.MediaDriver;
 import io.aeron.logbuffer.FragmentHandler;
 import io.aeron.logbuffer.Header;
+import static java.lang.System.setProperty;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 import static org.agrona.BitUtil.CACHE_LINE_LENGTH;
@@ -43,20 +45,22 @@ import org.agrona.concurrent.BusySpinIdleStrategy;
 import org.agrona.concurrent.IdleStrategy;
 import org.agrona.concurrent.SigInt;
 import org.agrona.concurrent.UnsafeBuffer;
+import static org.agrona.concurrent.UnsafeBuffer.DISABLE_BOUNDS_CHECKS_PROP_NAME;
 
 @SuppressWarnings("checkstyle:JavadocType")
 public final class BenchServer {
 
   private static final UnsafeBuffer BUFFER;
-  private static final int BUFF_SIZE;
   private static final boolean EMBEDDED_MEDIA_DRIVER = false;
   private static final int FRAGMENT_LIMIT = 256;
   private static final MessageHeaderDecoder HDR_D;
   private static final MessageHeaderEncoder HDR_E;
   private static final IdleStrategy IDLE = new BusySpinIdleStrategy();
   private static final PingDecoder PING_D;
+  private static final int PING_LEN;
   private static final PongEncoder PONG_E;
   private static final PriceEncoder PRICE_E;
+  private static final int PRICE_LEN;
   private static final String REP_CHAN = Configuration.REP_CHANNEL;
   private static final int REP_STREAM_ID = Configuration.REP_STREAM_ID;
   private static final String REQ_CHAN = Configuration.REQ_CHANNEL;
@@ -71,8 +75,10 @@ public final class BenchServer {
   private final Subscription subscription;
 
   static {
-    BUFF_SIZE = MessageHeaderEncoder.ENCODED_LENGTH + PriceEncoder.BLOCK_LENGTH;
-    final ByteBuffer bb = allocateDirectAligned(BUFF_SIZE, CACHE_LINE_LENGTH);
+    setProperty(DISABLE_BOUNDS_CHECKS_PROP_NAME, "true");
+    PING_LEN = ENCODED_LENGTH + PongEncoder.BLOCK_LENGTH;
+    PRICE_LEN = ENCODED_LENGTH + PriceEncoder.BLOCK_LENGTH;
+    final ByteBuffer bb = allocateDirectAligned(PRICE_LEN, CACHE_LINE_LENGTH);
     BUFFER = new UnsafeBuffer(bb);
     HDR_D = new MessageHeaderDecoder();
     HDR_E = new MessageHeaderEncoder();
@@ -81,8 +87,8 @@ public final class BenchServer {
     PRICE_E = new PriceEncoder();
     SIZE_D = new SizeDecoder();
     HDR_E.wrap(BUFFER, 0);
-    PONG_E.wrap(BUFFER, MessageHeaderEncoder.ENCODED_LENGTH);
-    PRICE_E.wrap(BUFFER, MessageHeaderEncoder.ENCODED_LENGTH);
+    PONG_E.wrap(BUFFER, ENCODED_LENGTH);
+    PRICE_E.wrap(BUFFER, ENCODED_LENGTH);
     HDR_E.schemaId(PongEncoder.SCHEMA_ID);
     HDR_E.version(PongEncoder.SCHEMA_VERSION);
   }
@@ -126,7 +132,7 @@ public final class BenchServer {
   @SuppressWarnings("PMD.UnusedFormalParameter")
   private void onMessage(final DirectBuffer buffer, final int offset,
                          final int length, final Header header) {
-    final int msgOffset = MessageHeaderDecoder.ENCODED_LENGTH + offset;
+    final int msgOffset = ENCODED_LENGTH + offset;
     HDR_D.wrap(buffer, offset);
     switch (HDR_D.templateId()) {
       case PingDecoder.TEMPLATE_ID:
@@ -146,7 +152,7 @@ public final class BenchServer {
     HDR_E.blockLength(PongEncoder.BLOCK_LENGTH);
     HDR_E.templateId(PongEncoder.TEMPLATE_ID);
     PONG_E.timestamp(PING_D.timestamp());
-    sendBuffer();
+    sendBuffer(PING_LEN);
   }
 
   private void onSize(final DirectBuffer buffer, final int offset,
@@ -163,19 +169,19 @@ public final class BenchServer {
       PRICE_E.ask(3);
       PRICE_E.trd(4);
       PRICE_E.vol(5);
-      sendBuffer();
+      sendBuffer(PRICE_LEN);
     }
   }
 
   @SuppressWarnings("PMD.AvoidLiteralsInIfCondition")
-  private void sendBuffer() {
-    if (publication.offer(BUFFER, 0, BUFF_SIZE) > 0L) {
+  private void sendBuffer(final int len) {
+    if (publication.offer(BUFFER, 0, len) > 0L) {
       return;
     }
 
     IDLE.reset();
 
-    while (publication.offer(BUFFER, 0, BUFF_SIZE) < 0L) {
+    while (publication.offer(BUFFER, 0, len) < 0L) {
       IDLE.idle();
     }
   }
