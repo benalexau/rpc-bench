@@ -1,5 +1,7 @@
 # Benchmark Results: 20 September 2016
 
+***UPDATE: Please see the [latest report](https://github.com/benalexau/rpc-bench/blob/master/results/20161024/README.md)***
+
 ### Introduction
 
 [Google](https://google.com) and [Real Logic](http://real-logic.co.uk/) each
