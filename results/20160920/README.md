@@ -127,7 +127,7 @@ All graphs shown below were produced by uploading the generated text files to
 
 ### Results
 
-All values are in nanoseconds.
+All values are in microseconds.
 
 #### Ping-Pong
 
