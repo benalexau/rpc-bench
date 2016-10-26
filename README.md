@@ -1,6 +1,6 @@
 # RPC Benchmark
 
-This benchmark compares gRPC and Aeron.
+This benchmark compares gRPC, Aeron and KryoNet.
 
 ![img](results/20161024/ping-pong.png)
 ![img](results/20161024/price-stream.png)
