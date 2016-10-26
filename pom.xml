@@ -66,6 +66,7 @@
   <modules>
     <module>grpc</module>
     <module>aeron</module>
+    <module>kryonet</module>
   </modules>
   <dependencyManagement>
     <dependencies>
