@@ -199,8 +199,10 @@ public final class BenchClient {
   private void onPrice(final DirectBuffer buffer, final int offset,
                        final int actingBlockLength, final int actingVersion) {
     PRICE_D.wrap(buffer, offset, actingBlockLength, actingVersion);
-    final long rtt = nanoTime() - PRICE_D.tod();
-    HISTOGRAM.recordValue(rtt);
+    if (PRICE_D.iid() % 100_000 == 0) {
+      final long rtt = nanoTime() - PRICE_D.tod();
+      HISTOGRAM.recordValue(rtt);
+    }
     PENDING.decrementAndGet();
   }
 

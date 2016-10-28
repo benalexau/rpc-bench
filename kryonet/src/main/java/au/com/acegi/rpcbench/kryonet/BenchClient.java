@@ -143,9 +143,11 @@ public final class BenchClient {
     }
 
     private void onPrice(final Price price) {
-      final long rtt = nanoTime() - price.tod;
-      HISTOGRAM.recordValue(rtt);
-      PENDING.decrementAndGet();
+      if (price.iid % 100_000 == 0) {
+        final long rtt = nanoTime() - price.tod;
+        HISTOGRAM.recordValue(rtt);
+        PENDING.decrementAndGet();
+      }
     }
   }
 

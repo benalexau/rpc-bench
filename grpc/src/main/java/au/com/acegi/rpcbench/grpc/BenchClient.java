@@ -148,8 +148,10 @@ public final class BenchClient {
 
       @Override
       public void onNext(final Price value) {
-        final long rtt = nanoTime() - value.getTod();
-        HISTOGRAM.recordValue(rtt);
+        if (value.getIid() % 100_000 == 0) {
+          final long rtt = nanoTime() - value.getTod();
+          HISTOGRAM.recordValue(rtt);
+        }
         latch.countDown();
       }
     };
