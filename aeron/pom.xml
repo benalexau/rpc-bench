@@ -12,13 +12,13 @@
   <packaging>jar</packaging>
   <name>RPC Benchmark: Aeron with SBE</name>
   <properties>
-    <sbe.version>1.5.2</sbe.version>
+    <sbe.version>1.5.4</sbe.version>
   </properties>
   <dependencies>
     <dependency>
       <groupId>io.aeron</groupId>
       <artifactId>aeron-all</artifactId>
-      <version>1.0.2</version>
+      <version>1.0.4</version>
     </dependency>
     <dependency>
       <groupId>org.hdrhistogram</groupId>
