@@ -18,7 +18,7 @@
     <dependency>
       <groupId>io.aeron</groupId>
       <artifactId>aeron-all</artifactId>
-      <version>1.0.4</version>
+      <version>1.2.3</version>
     </dependency>
     <dependency>
       <groupId>org.hdrhistogram</groupId>
