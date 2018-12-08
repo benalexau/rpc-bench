@@ -30,11 +30,14 @@ import com.esotericsoftware.kryonet.Listener.ThreadedListener;
 import com.esotericsoftware.kryonet.Server;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.agrona.concurrent.BusySpinIdleStrategy;
+import org.agrona.concurrent.IdleStrategy;
 import org.agrona.concurrent.SigInt;
 
 @SuppressWarnings("checkstyle:JavadocType")
 public final class BenchServer {
 
+  private static final IdleStrategy IDLE = new BusySpinIdleStrategy();
   private static final int OBJECT_BUFFER = 2_048;
   private static final int WRITE_BUFFER = 1_024 * 16; // 16 KB
 
@@ -61,6 +64,7 @@ public final class BenchServer {
     server.start();
     while (running.get()) {
       // busy spin
+      IDLE.idle();
     }
     server.stop();
   }
@@ -96,6 +100,7 @@ public final class BenchServer {
           price.vol = 5;
           while (!connection.isIdle()) {
             // busy spin waiting for space in buffer
+            IDLE.idle();
           }
           connection.sendTCP(price);
         }

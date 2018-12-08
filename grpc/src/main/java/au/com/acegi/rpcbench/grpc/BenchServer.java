@@ -29,6 +29,7 @@ import static io.grpc.ServerInterceptors.intercept;
 import io.grpc.netty.NettyServerBuilder;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
+import java.util.concurrent.locks.LockSupport;
 
 @SuppressWarnings("checkstyle:JavadocType")
 public class BenchServer {
@@ -111,6 +112,7 @@ public class BenchServer {
         bdr.setVol(5);
         while (!ConnectionInterceptor.isReady()) {
           // busy spin
+          LockSupport.parkNanos(1);
         }
         response.onNext(bdr.build());
       }

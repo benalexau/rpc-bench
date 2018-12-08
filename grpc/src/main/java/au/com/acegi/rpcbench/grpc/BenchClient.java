@@ -120,6 +120,7 @@ public final class BenchClient {
     for (int i = 0; i < messages; i++) {
       while (nanoTime() < nextSendAt) {
         // busy spin
+        LockSupport.parkNanos(1);
       }
       final Ping request = Ping.newBuilder().setTimestamp(nextSendAt).build();
       nextSendAt += SCHEDULE_INTERVAL_NS;

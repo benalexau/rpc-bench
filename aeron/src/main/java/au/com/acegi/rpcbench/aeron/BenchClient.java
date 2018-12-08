@@ -108,6 +108,7 @@ public final class BenchClient {
     HDR_E.version(PingEncoder.SCHEMA_VERSION);
   }
 
+  @SuppressWarnings("PMD.NullAssignment")
   public BenchClient() {
     driver = EMBEDDED_MEDIA_DRIVER ? MediaDriver.launchEmbedded() : null;
     ctx = new Aeron.Context().availableImageHandler(this::imageHandler);
@@ -219,11 +220,13 @@ public final class BenchClient {
     for (int i = 0; i < messages; i++) {
       while (nanoTime() < nextSendAt) {
         // busy spin
+        IDLE.idle();
       }
       PING_E.timestamp(nextSendAt);
       nextSendAt += SCHEDULE_INTERVAL_NS;
       do {
         // busy spin
+        IDLE.idle();
       } while (publication.offer(BUFFER, 0, PING_LEN) < 0L);
     }
     pongThread.join();

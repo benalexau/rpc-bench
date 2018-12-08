@@ -36,12 +36,15 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import java.util.concurrent.atomic.AtomicLong;
 import static java.util.concurrent.locks.LockSupport.parkNanos;
 import org.HdrHistogram.Histogram;
+import org.agrona.concurrent.BusySpinIdleStrategy;
+import org.agrona.concurrent.IdleStrategy;
 
 @SuppressWarnings("checkstyle:JavadocType")
 public final class BenchClient {
 
   private static final Histogram HISTOGRAM;
   private static final int HISTOGRAM_MAX_VAL_SEC = 14_400; // 4 hours
+  private static final IdleStrategy IDLE = new BusySpinIdleStrategy();
   private static final AtomicLong PENDING = new AtomicLong();
   private static final long PINGS_PER_SECOND = 10_000;
   private static final long SCHEDULE_INTERVAL_NS;
@@ -100,16 +103,19 @@ public final class BenchClient {
     for (int i = 0; i < messages; i++) {
       while (nanoTime() < nextSendAt) {
         // busy spin
+        IDLE.idle();
       }
       ping.timestamp = nextSendAt;
       nextSendAt += SCHEDULE_INTERVAL_NS;
       if (!client.isIdle()) {
         // busy spin waiting for send buffer space
+        IDLE.idle();
       }
       client.sendTCP(ping);
     }
     while (PENDING.get() > 0) {
       // busy spin pending completion
+      IDLE.idle();
     }
   }
 
@@ -122,6 +128,7 @@ public final class BenchClient {
 
     while (PENDING.get() > 0) {
       // busy spin pending completion
+      IDLE.idle();
     }
   }
 

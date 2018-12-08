@@ -93,6 +93,7 @@ public final class BenchServer {
     HDR_E.version(PongEncoder.SCHEMA_VERSION);
   }
 
+  @SuppressWarnings("PMD.NullAssignment")
   public BenchServer() {
     running = new AtomicBoolean(true);
     SigInt.register(() -> running.set(false));
