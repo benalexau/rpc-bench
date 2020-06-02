@@ -20,13 +20,29 @@
 
 package au.com.acegi.rpcbench.aeron;
 
+import static au.com.acegi.rpcbench.aeron.codecs.MessageHeaderEncoder.ENCODED_LENGTH;
+import static java.lang.System.nanoTime;
+import static java.lang.System.setProperty;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.concurrent.locks.LockSupport.parkNanos;
+import static org.agrona.BitUtil.CACHE_LINE_LENGTH;
+import static org.agrona.BufferUtil.allocateDirectAligned;
+import static org.agrona.concurrent.UnsafeBuffer.DISABLE_BOUNDS_CHECKS_PROP_NAME;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintStream;
+import java.nio.ByteBuffer;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicLong;
+
 import au.com.acegi.rpcbench.aeron.codecs.MessageHeaderDecoder;
 import au.com.acegi.rpcbench.aeron.codecs.MessageHeaderEncoder;
-import static au.com.acegi.rpcbench.aeron.codecs.MessageHeaderEncoder.ENCODED_LENGTH;
 import au.com.acegi.rpcbench.aeron.codecs.PingEncoder;
 import au.com.acegi.rpcbench.aeron.codecs.PongDecoder;
 import au.com.acegi.rpcbench.aeron.codecs.PriceDecoder;
 import au.com.acegi.rpcbench.aeron.codecs.SizeEncoder;
+
 import io.aeron.Aeron;
 import io.aeron.FragmentAssembler;
 import io.aeron.Image;
@@ -35,25 +51,12 @@ import io.aeron.Subscription;
 import io.aeron.driver.MediaDriver;
 import io.aeron.logbuffer.FragmentHandler;
 import io.aeron.logbuffer.Header;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.PrintStream;
-import static java.lang.System.nanoTime;
-import static java.lang.System.setProperty;
-import java.nio.ByteBuffer;
-import java.util.concurrent.CountDownLatch;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import java.util.concurrent.atomic.AtomicLong;
-import static java.util.concurrent.locks.LockSupport.parkNanos;
 import org.HdrHistogram.Histogram;
-import static org.agrona.BitUtil.CACHE_LINE_LENGTH;
-import static org.agrona.BufferUtil.allocateDirectAligned;
 import org.agrona.CloseHelper;
 import org.agrona.DirectBuffer;
 import org.agrona.concurrent.BusySpinIdleStrategy;
 import org.agrona.concurrent.IdleStrategy;
 import org.agrona.concurrent.UnsafeBuffer;
-import static org.agrona.concurrent.UnsafeBuffer.DISABLE_BOUNDS_CHECKS_PROP_NAME;
 
 @SuppressWarnings("checkstyle:JavadocType")
 public final class BenchClient {

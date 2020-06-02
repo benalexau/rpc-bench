@@ -20,16 +20,19 @@
 
 package au.com.acegi.rpcbench.grpc;
 
+import static io.grpc.ServerInterceptors.intercept;
+
+import java.io.IOException;
+import java.util.concurrent.locks.LockSupport;
+
 import au.com.acegi.rpcbench.grpc.codecs.BenchGrpc;
 import au.com.acegi.rpcbench.grpc.codecs.Ping;
 import au.com.acegi.rpcbench.grpc.codecs.Pong;
 import au.com.acegi.rpcbench.grpc.codecs.Price;
 import au.com.acegi.rpcbench.grpc.codecs.Size;
-import static io.grpc.ServerInterceptors.intercept;
+
 import io.grpc.netty.NettyServerBuilder;
 import io.grpc.stub.StreamObserver;
-import java.io.IOException;
-import java.util.concurrent.locks.LockSupport;
 
 @SuppressWarnings("checkstyle:JavadocType")
 public class BenchServer {

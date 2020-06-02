@@ -20,13 +20,22 @@
 
 package au.com.acegi.rpcbench.aeron;
 
+import static au.com.acegi.rpcbench.aeron.codecs.MessageHeaderEncoder.ENCODED_LENGTH;
+import static java.lang.System.setProperty;
+import static org.agrona.BitUtil.CACHE_LINE_LENGTH;
+import static org.agrona.BufferUtil.allocateDirectAligned;
+import static org.agrona.concurrent.UnsafeBuffer.DISABLE_BOUNDS_CHECKS_PROP_NAME;
+
+import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import au.com.acegi.rpcbench.aeron.codecs.MessageHeaderDecoder;
 import au.com.acegi.rpcbench.aeron.codecs.MessageHeaderEncoder;
-import static au.com.acegi.rpcbench.aeron.codecs.MessageHeaderEncoder.ENCODED_LENGTH;
 import au.com.acegi.rpcbench.aeron.codecs.PingDecoder;
 import au.com.acegi.rpcbench.aeron.codecs.PongEncoder;
 import au.com.acegi.rpcbench.aeron.codecs.PriceEncoder;
 import au.com.acegi.rpcbench.aeron.codecs.SizeDecoder;
+
 import io.aeron.Aeron;
 import io.aeron.FragmentAssembler;
 import io.aeron.Publication;
@@ -34,18 +43,12 @@ import io.aeron.Subscription;
 import io.aeron.driver.MediaDriver;
 import io.aeron.logbuffer.FragmentHandler;
 import io.aeron.logbuffer.Header;
-import static java.lang.System.setProperty;
-import java.nio.ByteBuffer;
-import java.util.concurrent.atomic.AtomicBoolean;
-import static org.agrona.BitUtil.CACHE_LINE_LENGTH;
-import static org.agrona.BufferUtil.allocateDirectAligned;
 import org.agrona.CloseHelper;
 import org.agrona.DirectBuffer;
 import org.agrona.concurrent.BusySpinIdleStrategy;
 import org.agrona.concurrent.IdleStrategy;
 import org.agrona.concurrent.SigInt;
 import org.agrona.concurrent.UnsafeBuffer;
-import static org.agrona.concurrent.UnsafeBuffer.DISABLE_BOUNDS_CHECKS_PROP_NAME;
 
 @SuppressWarnings("checkstyle:JavadocType")
 public final class BenchServer {

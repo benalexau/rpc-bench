@@ -20,12 +20,13 @@
 
 package au.com.acegi.rpcbench.aeron;
 
+import static java.lang.System.setProperty;
+import static org.agrona.concurrent.UnsafeBuffer.DISABLE_BOUNDS_CHECKS_PROP_NAME;
+
 import io.aeron.driver.MediaDriver;
 import io.aeron.driver.ThreadingMode;
-import static java.lang.System.setProperty;
 import org.agrona.concurrent.BusySpinIdleStrategy;
 import org.agrona.concurrent.SigIntBarrier;
-import static org.agrona.concurrent.UnsafeBuffer.DISABLE_BOUNDS_CHECKS_PROP_NAME;
 
 @SuppressWarnings("checkstyle:JavadocType")
 public final class LowLatencyMediaDriver {

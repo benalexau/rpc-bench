@@ -20,21 +20,24 @@
 
 package au.com.acegi.rpcbench.grpc;
 
+import static java.lang.System.nanoTime;
+import static java.util.concurrent.TimeUnit.SECONDS;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintStream;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.locks.LockSupport;
+
 import au.com.acegi.rpcbench.grpc.codecs.BenchGrpc;
 import au.com.acegi.rpcbench.grpc.codecs.Ping;
 import au.com.acegi.rpcbench.grpc.codecs.Pong;
 import au.com.acegi.rpcbench.grpc.codecs.Price;
 import au.com.acegi.rpcbench.grpc.codecs.Size;
+
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.stub.StreamObserver;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.PrintStream;
-import static java.lang.System.nanoTime;
-import java.util.concurrent.CountDownLatch;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import java.util.concurrent.locks.LockSupport;
 import org.HdrHistogram.Histogram;
 
 @SuppressWarnings("checkstyle:JavadocType")

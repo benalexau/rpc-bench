@@ -20,16 +20,18 @@
 
 package au.com.acegi.rpcbench.kryonet;
 
+import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import au.com.acegi.rpcbench.kryonet.Network.Ping;
 import au.com.acegi.rpcbench.kryonet.Network.Pong;
 import au.com.acegi.rpcbench.kryonet.Network.Price;
 import au.com.acegi.rpcbench.kryonet.Network.Size;
+
 import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Listener.ThreadedListener;
 import com.esotericsoftware.kryonet.Server;
-import java.io.IOException;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.agrona.concurrent.BusySpinIdleStrategy;
 import org.agrona.concurrent.IdleStrategy;
 import org.agrona.concurrent.SigInt;
